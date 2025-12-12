@@ -15,6 +15,8 @@ import (
 	"google.golang.org/api/calendar/v3"
 )
 
+var newCalendarService = googleapi.NewCalendar
+
 func newCalendarCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "calendar",
@@ -43,7 +45,7 @@ func newCalendarCalendarsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
@@ -84,7 +86,7 @@ func newCalendarAclCmd(flags *rootFlags) *cobra.Command {
 			}
 			calendarID := args[0]
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
@@ -146,7 +148,7 @@ func newCalendarEventsCmd(flags *rootFlags) *cobra.Command {
 				to = oneWeekLater.Format(time.RFC3339)
 			}
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
@@ -213,7 +215,7 @@ func newCalendarEventCmd(flags *rootFlags) *cobra.Command {
 			calendarID := args[0]
 			eventID := args[1]
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
@@ -283,7 +285,7 @@ func newCalendarCreateCmd(flags *rootFlags) *cobra.Command {
 				return errors.New("required: --summary, --start, --end")
 			}
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
@@ -344,7 +346,7 @@ func newCalendarUpdateCmd(flags *rootFlags) *cobra.Command {
 			calendarID := args[0]
 			eventID := args[1]
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
@@ -435,7 +437,7 @@ func newCalendarDeleteCmd(flags *rootFlags) *cobra.Command {
 			calendarID := args[0]
 			eventID := args[1]
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
@@ -480,7 +482,7 @@ func newCalendarFreeBusyCmd(flags *rootFlags) *cobra.Command {
 				return errors.New("required: --from and --to")
 			}
 
-			svc, err := googleapi.NewCalendar(cmd.Context(), account)
+			svc, err := newCalendarService(cmd.Context(), account)
 			if err != nil {
 				return err
 			}
