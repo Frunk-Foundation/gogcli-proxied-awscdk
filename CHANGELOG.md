@@ -9,13 +9,14 @@
 
 ### Changed
 
-- macOS: always trust the `gog` binary in Keychain (removed `GOG_KEYCHAIN_TRUST_APPLICATION`).
+- macOS: stop trying to modify Keychain ACLs (“trust gog”); removed `GOG_KEYCHAIN_TRUST_APPLICATION`.
 - BREAKING: remove positional/legacy flags; normalize paging and file output flags.
 - BREAKING: replace `--output` with `--json` and `--plain` (and env `GOG_OUTPUT` with `GOG_JSON`/`GOG_PLAIN`).
 - BREAKING: destructive commands now require `--force` in non-interactive contexts (or they prompt on TTY).
 - BREAKING: `gog calendar create|update` uses `--from/--to` (removed `--start/--end`).
 - BREAKING: `gog gmail send|drafts create` uses `--reply-to-message-id` (removed `--reply-to` for message IDs) and `--reply-to` (removed `--reply-to-address`).
 - BREAKING: `gog gmail attachment` uses `--name` (removed `--filename`).
+- BREAKING: Drive: `drive ls` uses `--parent` (removed positional `folderId`), `drive upload` uses `--parent` (removed `--folder`), `drive move` uses `--parent` (removed positional `newParentId`).
 - BREAKING: `gog drive download` uses `--out` (removed positional `destPath`).
 - BREAKING: `gog auth tokens export` uses `--out` (removed positional `outPath`).
 - BREAKING: `gog auth tokens export` uses `--overwrite` (removed `--force`).

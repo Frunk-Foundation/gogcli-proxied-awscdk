@@ -86,10 +86,11 @@ If you use `pnpm`, see the shortcut section for `pnpm -s` (silent) to keep stdou
 Drive:
 
 - `gog drive ls --max 20`
+- `gog drive ls --parent <folderId> --max 20`
 - `gog drive search "invoice" --max 20`
 - `gog drive get <fileId>`
 - `gog drive download <fileId> [--out PATH]`
-- `gog drive upload ./path/to/file --folder <folderId>`
+- `gog drive upload ./path/to/file --parent <folderId>`
 
 Calendar:
 

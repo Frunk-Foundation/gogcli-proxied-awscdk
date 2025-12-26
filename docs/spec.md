@@ -126,20 +126,20 @@ Environment:
 
 ### Implemented
 
-- `gog auth credentials <credentials.json>`
+- `gog auth credentials <credentials.json|->`
 - `gog auth add <email> [--services all|gmail,calendar,drive,contacts,tasks,people] [--manual] [--force-consent]`
 - `gog auth list`
 - `gog auth remove <email>`
 - `gog auth tokens list`
 - `gog auth tokens delete <email>`
-- `gog drive ls [folderId] [--max N] [--page TOKEN] [--query Q]`
+- `gog drive ls [--parent ID] [--max N] [--page TOKEN] [--query Q]`
 - `gog drive search <text> [--max N] [--page TOKEN]`
 - `gog drive get <fileId>`
 - `gog drive download <fileId> [--out PATH]`
-- `gog drive upload <localPath> [--name N] [--folder ID]`
+- `gog drive upload <localPath> [--name N] [--parent ID]`
 - `gog drive mkdir <name> [--parent ID]`
 - `gog drive delete <fileId>`
-- `gog drive move <fileId> <newParentId>`
+- `gog drive move <fileId> --parent ID`
 - `gog drive rename <fileId> <newName>`
 - `gog drive share <fileId> [--anyone | --email addr] [--role reader|writer] [--discoverable]`
 - `gog drive permissions <fileId> [--max N] [--page TOKEN]`
