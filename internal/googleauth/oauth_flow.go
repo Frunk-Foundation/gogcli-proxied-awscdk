@@ -31,7 +31,7 @@ type AuthorizeOptions struct {
 
 // postSuccessDisplaySeconds is the number of seconds the success page remains
 // visible before the local OAuth server shuts down. This value must match the
-// JavaScript countdown in templates/success.html and templates/success_new.html.
+// JavaScript countdown in templates/success.html.
 const postSuccessDisplaySeconds = 30
 
 var (

@@ -305,7 +305,7 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 
 	// Render success page with the new template
 	w.WriteHeader(http.StatusOK)
-	renderSuccessPageNew(w, email, serviceNames)
+	renderSuccessPageWithDetails(w, email, serviceNames)
 }
 
 func (ms *ManageServer) handleSetDefault(w http.ResponseWriter, r *http.Request) {
@@ -381,9 +381,9 @@ func writeJSONError(w http.ResponseWriter, msg string, status int) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"error": msg})
 }
 
-// renderSuccessPageNew renders the new success template with email and services
-func renderSuccessPageNew(w http.ResponseWriter, email string, services []string) {
-	tmpl, err := template.New("success").Parse(successTemplateNew)
+// renderSuccessPageWithDetails renders the success template with email and services
+func renderSuccessPageWithDetails(w http.ResponseWriter, email string, services []string) {
+	tmpl, err := template.New("success").Parse(successTemplate)
 	if err != nil {
 		_, _ = w.Write([]byte("Success! You can close this window."))
 		return
