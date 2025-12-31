@@ -2,7 +2,7 @@
 
 ## 0.4.2 - Unreleased
 
-- (next)
+- Gmail: `thread modify` subcommand + `thread get` split (#21) — thanks @alexknowshtml.
 
 ## 0.4.1 - 2025-12-28
 
