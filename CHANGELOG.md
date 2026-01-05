@@ -9,6 +9,7 @@
 - Secrets: add `GOG_KEYRING_BACKEND={auto|keychain|file}` to force backend (use `file` to avoid Keychain prompts; pair with `GOG_KEYRING_PASSWORD`).
 - Docs: explain macOS Keychain prompts and backend options.
 - DX: remove pnpm wrapper; use `make gog`.
+- Gmail: `gog gmail thread attachments` list/download attachments (#27) — thanks @salmonumbrella.
 
 ## 0.4.2 - 2025-12-31
 
