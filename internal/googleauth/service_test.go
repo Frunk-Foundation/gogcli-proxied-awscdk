@@ -159,6 +159,22 @@ func TestScopesForServices_UnionSorted(t *testing.T) {
 	}
 }
 
+func TestScopes_DocsIncludesDriveScope(t *testing.T) {
+	scopes, err := Scopes(ServiceDocs)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	want := "https://www.googleapis.com/auth/drive"
+	for _, scope := range scopes {
+		if scope == want {
+			return
+		}
+	}
+
+	t.Fatalf("missing %q in %v", want, scopes)
+}
+
 func TestScopes_UnknownService(t *testing.T) {
 	if _, err := Scopes(Service("nope")); err == nil {
 		t.Fatalf("expected error")

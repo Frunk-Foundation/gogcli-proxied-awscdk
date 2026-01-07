@@ -141,7 +141,7 @@ gog auth add you@gmail.com --services sheets --force-consent
 
 `--services all` is accepted as an alias for `user` for backwards compatibility.
 
-Docs uses the Google Docs API scope (`https://www.googleapis.com/auth/documents`), which is separate from Drive.
+Docs commands are implemented via the Drive API, so `docs` uses the same Drive scope as `drive` (no extra permissions).
 
 ### Google Keep (Workspace only)
 

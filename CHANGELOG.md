@@ -21,6 +21,7 @@
 - Keep: add Workspace-only Google Keep support (service account + domain-wide delegation) (#32) — thanks @koala73.
 - Auth: `gog auth add` now defaults to `--services user` (`--services all` accepted as an alias for backwards compatibility).
 - Auth: allow `docs` in `gog auth add --services` (#33) — thanks @mbelinky.
+- Auth: `docs` now uses the Drive scope to match Drive-backed Docs commands.
 - Auth: `gog auth manage` stores tokens under the real account email (Google userinfo) (#36) — thanks @salmonumbrella.
 
 ## 0.4.2 - 2025-12-31
