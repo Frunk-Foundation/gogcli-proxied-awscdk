@@ -182,6 +182,22 @@ func (s *gmailWatchServer) handlePush(ctx context.Context, payload gmailPushPayl
 		nextHistoryID = formatHistoryID(historyResp.HistoryId)
 	}
 	if err := store.Update(func(state *gmailWatchState) error {
+		if strings.TrimSpace(nextHistoryID) == "" {
+			return nil
+		}
+		nextID, err := parseHistoryID(nextHistoryID)
+		if err != nil {
+			return err
+		}
+		if state.HistoryID != "" {
+			currentID, err := parseHistoryID(state.HistoryID)
+			if err != nil {
+				return err
+			}
+			if nextID < currentID {
+				return nil
+			}
+		}
 		state.HistoryID = nextHistoryID
 		state.UpdatedAtMs = time.Now().UnixMilli()
 		return nil

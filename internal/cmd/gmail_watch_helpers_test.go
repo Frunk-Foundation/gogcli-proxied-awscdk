@@ -139,15 +139,36 @@ func TestGmailWatchStore_StateHelpers(t *testing.T) {
 	if !strings.Contains(store.path, "user_x_example_com.json") {
 		t.Fatalf("unexpected path: %s", store.path)
 	}
-	if _, startErr := store.StartHistoryID("101"); startErr != nil {
+	id, startErr := store.StartHistoryID("101")
+	if startErr != nil {
 		t.Fatalf("start history: %v", startErr)
+	}
+	if id != 101 {
+		t.Fatalf("expected history id 101, got %d", id)
 	}
 	if store.state.HistoryID != "101" {
 		t.Fatalf("expected history set")
 	}
-	id, startErr := store.StartHistoryID("")
+	id, startErr = store.StartHistoryID("")
 	if startErr != nil {
 		t.Fatalf("start history existing: %v", startErr)
+	}
+	if id != 101 {
+		t.Fatalf("expected history id 101, got %d", id)
+	}
+	id, startErr = store.StartHistoryID("100")
+	if startErr != nil {
+		t.Fatalf("start history stale: %v", startErr)
+	}
+	if id != 0 {
+		t.Fatalf("expected stale history ignored, got %d", id)
+	}
+	if store.state.HistoryID != "101" {
+		t.Fatalf("expected history unchanged")
+	}
+	id, startErr = store.StartHistoryID("bad")
+	if startErr != nil {
+		t.Fatalf("start history invalid push: %v", startErr)
 	}
 	if id != 101 {
 		t.Fatalf("expected history id 101, got %d", id)

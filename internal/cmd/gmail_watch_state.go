@@ -110,36 +110,37 @@ func (s *gmailWatchStore) StartHistoryID(pushHistory string) (uint64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Parse push historyId if provided
-	var pushID uint64
-	if pushHistory != "" {
-		var err error
-		pushID, err = parseHistoryID(pushHistory)
-		if err != nil {
-			return 0, err
-		}
-	}
+	pushHistory = strings.TrimSpace(pushHistory)
 
 	// If no stored state, use push historyId
 	if s.state.HistoryID == "" {
-		if pushHistory != "" {
-			s.state.HistoryID = pushHistory
-			s.state.UpdatedAtMs = time.Now().UnixMilli()
-			_ = s.Save()
-			return pushID, nil // Return parsed ID, not 0
+		if pushHistory == "" {
+			return 0, nil
 		}
-		return 0, nil
+		pushID, err := parseHistoryID(pushHistory)
+		if err != nil {
+			return 0, err
+		}
+		s.state.HistoryID = pushHistory
+		s.state.UpdatedAtMs = time.Now().UnixMilli()
+		_ = s.Save()
+		return pushID, nil
 	}
 
 	storedID, err := parseHistoryID(s.state.HistoryID)
 	if err != nil {
 		return 0, err
 	}
+	if pushHistory == "" {
+		return storedID, nil
+	}
 
-	// If push historyId is lower than stored, use push
-	// This catches messages that arrived before our stored checkpoint
-	if pushID > 0 && pushID < storedID {
-		return pushID, nil
+	pushID, err := parseHistoryID(pushHistory)
+	if err != nil {
+		return storedID, nil
+	}
+	if pushID <= storedID {
+		return 0, nil
 	}
 
 	return storedID, nil
