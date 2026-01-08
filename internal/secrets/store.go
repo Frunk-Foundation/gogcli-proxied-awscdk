@@ -48,6 +48,7 @@ var (
 	errMissingSecretKey      = errors.New("missing secret key")
 	errNoTTY                 = errors.New("no TTY available for keyring file backend password prompt")
 	errInvalidKeyringBackend = errors.New("invalid keyring backend")
+	errKeyringTimeout        = errors.New("keyring connection timed out")
 	openKeyringFunc          = openKeyring
 )
 
@@ -129,6 +130,11 @@ func normalizeKeyringBackend(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 
+// keyringOpenTimeout is the maximum time to wait for keyring.Open() to complete.
+// On headless Linux, D-Bus SecretService can hang indefinitely if gnome-keyring
+// is installed but not running.
+const keyringOpenTimeout = 5 * time.Second
+
 func openKeyring() (keyring.Keyring, error) {
 	// On Linux/WSL/containers, OS keychains (secret-service/kwallet) may be unavailable.
 	// In that case github.com/99designs/keyring falls back to the "file" backend,
@@ -143,23 +149,73 @@ func openKeyring() (keyring.Keyring, error) {
 		return nil, err
 	}
 
-	allowedBackends, err := allowedBackends(backendInfo)
+	backends, err := allowedBackends(backendInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	ring, err := keyring.Open(keyring.Config{
+	// On Linux with "auto" backend and no D-Bus session, force file backend.
+	// Without DBUS_SESSION_BUS_ADDRESS, SecretService will hang indefinitely
+	// trying to connect (common on headless systems like Raspberry Pi).
+	if runtime.GOOS != "darwin" && backendInfo.Value == "auto" && os.Getenv("DBUS_SESSION_BUS_ADDRESS") == "" {
+		backends = []keyring.BackendType{keyring.FileBackend}
+	}
+
+	cfg := keyring.Config{
 		ServiceName:              config.AppName,
 		KeychainTrustApplication: runtime.GOOS == "darwin",
-		AllowedBackends:          allowedBackends,
+		AllowedBackends:          backends,
 		FileDir:                  keyringDir,
 		FilePasswordFunc:         fileKeyringPasswordFunc(),
-	})
+	}
+
+	// On non-Darwin platforms with D-Bus present, keyring.Open() can still hang
+	// if SecretService is unresponsive (e.g., gnome-keyring installed but not running).
+	// Use a timeout as a safety net.
+	if runtime.GOOS != "darwin" && os.Getenv("DBUS_SESSION_BUS_ADDRESS") != "" {
+		return openKeyringWithTimeout(cfg, keyringOpenTimeout)
+	}
+
+	ring, err := keyring.Open(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("open keyring: %w", err)
 	}
 
 	return ring, nil
+}
+
+type keyringResult struct {
+	ring keyring.Keyring
+	err  error
+}
+
+// openKeyringWithTimeout wraps keyring.Open with a timeout to prevent indefinite
+// hangs when D-Bus SecretService is unresponsive (e.g., gnome-keyring installed
+// but not running on headless Linux).
+//
+// Note: If timeout occurs, the spawned goroutine continues blocking on keyring.Open()
+// and will leak. This is acceptable for a CLI tool since the process exits on this
+// error, but would need refactoring for long-running use.
+func openKeyringWithTimeout(cfg keyring.Config, timeout time.Duration) (keyring.Keyring, error) {
+	ch := make(chan keyringResult, 1)
+
+	go func() {
+		ring, err := keyring.Open(cfg)
+		ch <- keyringResult{ring, err}
+	}()
+
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			return nil, fmt.Errorf("open keyring: %w", res.err)
+		}
+
+		return res.ring, nil
+	case <-time.After(timeout):
+		return nil, fmt.Errorf("%w after %v (D-Bus SecretService may be unresponsive); "+
+			"set GOG_KEYRING_BACKEND=file and GOG_KEYRING_PASSWORD=<password> to use encrypted file storage instead",
+			errKeyringTimeout, timeout)
+	}
 }
 
 func OpenDefault() (Store, error) {
