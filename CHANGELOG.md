@@ -7,6 +7,7 @@
 - CLI: help shows build version + git SHA and adds colored headings/command names (respects `NO_COLOR` and `--color`).
 - CLI: accept `--output` alias for `--out` and `--output-dir` for Gmail attachment downloads (#47) — thanks @salmonumbrella.
 - Auth: `gog auth list --check` validates refresh tokens by exchanging for an access token.
+- Auth: manual OAuth paste accepts EOF without newline (#46) — thanks @salmonumbrella.
 - Auth: OAuth browser flow now finishes immediately after callback (no 30s “stuck” delay).
 - Homebrew: tap now installs GitHub release binaries (macOS) to reduce Keychain prompt churn.
 - Secrets: add `GOG_KEYRING_BACKEND={auto|keychain|file}` to force backend (use `file` to avoid Keychain prompts; pair with `GOG_KEYRING_PASSWORD`).

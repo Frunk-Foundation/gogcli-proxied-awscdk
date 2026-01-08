@@ -69,7 +69,7 @@ func ResolveKeyringBackendInfo() (KeyringBackendInfo, error) {
 
 	cfg, err := config.ReadConfig()
 	if err != nil {
-		return KeyringBackendInfo{}, fmt.Errorf("read config: %w", err)
+		return KeyringBackendInfo{}, fmt.Errorf("resolve keyring backend: %w", err)
 	}
 
 	if cfg.KeyringBackend != "" {
