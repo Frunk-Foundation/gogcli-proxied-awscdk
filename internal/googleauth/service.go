@@ -54,8 +54,8 @@ var serviceInfoByService = map[Service]serviceInfo{
 			"https://mail.google.com/",
 			"https://www.googleapis.com/auth/gmail.settings.basic",
 		},
-		user:   true,
-		apis:   []string{"Gmail API"},
+		user: true,
+		apis: []string{"Gmail API"},
 	},
 	ServiceCalendar: {
 		scopes: []string{"https://www.googleapis.com/auth/calendar"},

@@ -11,6 +11,7 @@ import (
 
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/errfmt"
+	"github.com/steipete/gogcli/internal/googleauth"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/secrets"
 	"github.com/steipete/gogcli/internal/ui"
@@ -32,6 +33,7 @@ type CLI struct {
 	Version kong.VersionFlag `help:"Print version and exit"`
 
 	Auth       AuthCmd       `cmd:"" help:"Auth and credentials"`
+	Groups     GroupsCmd     `cmd:"" help:"Google Groups"`
 	Drive      DriveCmd      `cmd:"" help:"Google Drive"`
 	Docs       DocsCmd       `cmd:"" help:"Google Docs (export via Drive)"`
 	Slides     SlidesCmd     `cmd:"" help:"Google Slides"`
@@ -40,6 +42,7 @@ type CLI struct {
 	Contacts   ContactsCmd   `cmd:"" help:"Google Contacts"`
 	Tasks      TasksCmd      `cmd:"" help:"Google Tasks"`
 	People     PeopleCmd     `cmd:"" help:"Google People"`
+	Keep       KeepCmd       `cmd:"" help:"Google Keep (Workspace only)"`
 	Sheets     SheetsCmd     `cmd:"" help:"Google Sheets"`
 	VersionCmd VersionCmd    `cmd:"" name:"version" help:"Print version"`
 	Completion CompletionCmd `cmd:"" help:"Generate shell completion scripts"`
@@ -50,10 +53,11 @@ type exitPanic struct{ code int }
 func Execute(args []string) (err error) {
 	envMode := outfmt.FromEnv()
 	vars := kong.Vars{
-		"color":   envOr("GOG_COLOR", "auto"),
-		"json":    boolString(envMode.JSON),
-		"plain":   boolString(envMode.Plain),
-		"version": VersionString(),
+		"auth_services": googleauth.UserServiceCSV(),
+		"color":         envOr("GOG_COLOR", "auto"),
+		"json":          boolString(envMode.JSON),
+		"plain":         boolString(envMode.Plain),
+		"version":       VersionString(),
 	}
 
 	cli := &CLI{}
@@ -61,6 +65,8 @@ func Execute(args []string) (err error) {
 		cli,
 		kong.Name("gog"),
 		kong.Description(helpDescription()),
+		kong.ConfigureHelp(helpOptions()),
+		kong.Help(helpPrinter),
 		kong.Vars(vars),
 		kong.Writers(os.Stdout, os.Stderr),
 		kong.Exit(func(code int) { panic(exitPanic{code: code}) }),

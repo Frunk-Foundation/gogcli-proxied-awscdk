@@ -13,6 +13,13 @@ import (
 	"golang.org/x/term"
 )
 
+func helpOptions() kong.HelpOptions {
+	mode := strings.ToLower(strings.TrimSpace(os.Getenv("GOG_HELP")))
+	return kong.HelpOptions{
+		NoExpandSubcommands: mode != "full",
+	}
+}
+
 func helpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 	origStdout := ctx.Stdout
 	origStderr := ctx.Stderr
