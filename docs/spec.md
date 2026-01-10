@@ -103,7 +103,7 @@ Scope selection note:
 
 - The consent screen shows the scopes the CLI requested.
 - Users cannot selectively un-check individual requested scopes in the consent screen; they either approve all requested scopes or cancel.
-- To request fewer scopes, choose fewer services via `gog auth add --services ...`.
+- To request fewer scopes, choose fewer services via `gog auth add --services ...` or use `gog auth add --readonly` where applicable.
 
 ## Config layout
 
@@ -134,7 +134,7 @@ Flag aliases:
 ### Implemented
 
 - `gog auth credentials <credentials.json|->`
-- `gog auth add <email> [--services user|all|gmail,calendar,drive,docs,contacts,tasks,sheets,people,groups] [--manual] [--force-consent]`
+- `gog auth add <email> [--services user|all|gmail,calendar,drive,docs,contacts,tasks,sheets,people,groups] [--readonly] [--drive-scope full|readonly|file] [--manual] [--force-consent]`
 - `gog auth services [--markdown]`
 - `gog auth keep <email> --key <service-account.json>` (Google Keep; Workspace only)
 - `gog auth list`

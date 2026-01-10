@@ -6,6 +6,10 @@
 
 - Gmail: allow drafts without a recipient; drafts update preserves existing `To` when `--to` is omitted. (#57) — thanks @antons.
 
+### Added
+
+- Auth: `gog auth add --readonly` and `--drive-scope` for least-privilege tokens. (#58) — thanks @jeremys.
+
 ### Fixed
 
 - Paths: expand leading `~` in user-provided file paths (e.g. `--out "~/Downloads/file.pdf"`). (#56) — thanks @salmonumbrella.

@@ -28,7 +28,23 @@ const (
 	scopeUserinfoEmail = "https://www.googleapis.com/auth/userinfo.email"
 )
 
-var errUnknownService = errors.New("unknown service")
+var (
+	errUnknownService    = errors.New("unknown service")
+	errInvalidDriveScope = errors.New("invalid drive scope")
+)
+
+type DriveScopeMode string
+
+const (
+	DriveScopeFull     DriveScopeMode = "full"
+	DriveScopeReadonly DriveScopeMode = "readonly"
+	DriveScopeFile     DriveScopeMode = "file"
+)
+
+type ScopeOptions struct {
+	Readonly   bool
+	DriveScope DriveScopeMode
+}
 
 type serviceInfo struct {
 	scopes []string
@@ -254,6 +270,119 @@ func ScopesForManage(services []Service) ([]string, error) {
 	}
 
 	return mergeScopes(scopes, []string{scopeOpenID, scopeEmail, scopeUserinfoEmail}), nil
+}
+
+func ScopesForManageWithOptions(services []Service, opts ScopeOptions) ([]string, error) {
+	scopes, err := scopesForServicesWithOptions(services, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeScopes(scopes, []string{scopeOpenID, scopeEmail, scopeUserinfoEmail}), nil
+}
+
+func scopesForServicesWithOptions(services []Service, opts ScopeOptions) ([]string, error) {
+	set := make(map[string]struct{})
+
+	for _, svc := range services {
+		scopes, err := scopesForServiceWithOptions(svc, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, s := range scopes {
+			set[s] = struct{}{}
+		}
+	}
+
+	out := make([]string, 0, len(set))
+	for s := range set {
+		out = append(out, s)
+	}
+
+	sort.Strings(out)
+
+	return out, nil
+}
+
+func scopesForServiceWithOptions(service Service, opts ScopeOptions) ([]string, error) {
+	driveScope := strings.TrimSpace(string(opts.DriveScope))
+	switch driveScope {
+	case "", string(DriveScopeFull), string(DriveScopeReadonly), string(DriveScopeFile):
+	default:
+		return nil, fmt.Errorf("%w %q (expected full|readonly|file)", errInvalidDriveScope, opts.DriveScope)
+	}
+
+	driveScopeValue := func() string {
+		if opts.Readonly {
+			return "https://www.googleapis.com/auth/drive.readonly"
+		}
+
+		switch opts.DriveScope {
+		case DriveScopeFile:
+			return "https://www.googleapis.com/auth/drive.file"
+		case DriveScopeReadonly:
+			return "https://www.googleapis.com/auth/drive.readonly"
+		default:
+			return "https://www.googleapis.com/auth/drive"
+		}
+	}
+
+	switch service {
+	case ServiceGmail:
+		if opts.Readonly {
+			return []string{"https://www.googleapis.com/auth/gmail.readonly"}, nil
+		}
+
+		return Scopes(service)
+	case ServiceCalendar:
+		if opts.Readonly {
+			return []string{"https://www.googleapis.com/auth/calendar.readonly"}, nil
+		}
+
+		return Scopes(service)
+	case ServiceDrive:
+		return []string{driveScopeValue()}, nil
+	case ServiceDocs:
+		docScope := "https://www.googleapis.com/auth/documents"
+		if opts.Readonly {
+			docScope = "https://www.googleapis.com/auth/documents.readonly"
+		}
+
+		return []string{driveScopeValue(), docScope}, nil
+	case ServiceContacts:
+		contactsScope := "https://www.googleapis.com/auth/contacts"
+		if opts.Readonly {
+			contactsScope = "https://www.googleapis.com/auth/contacts.readonly"
+		}
+
+		return []string{
+			contactsScope,
+			"https://www.googleapis.com/auth/contacts.other.readonly",
+			"https://www.googleapis.com/auth/directory.readonly",
+		}, nil
+	case ServiceTasks:
+		if opts.Readonly {
+			return []string{"https://www.googleapis.com/auth/tasks.readonly"}, nil
+		}
+
+		return Scopes(service)
+	case ServicePeople:
+		// No read-only equivalent; profile is already read-ish.
+		return Scopes(service)
+	case ServiceSheets:
+		if opts.Readonly {
+			return []string{"https://www.googleapis.com/auth/spreadsheets.readonly"}, nil
+		}
+
+		return Scopes(service)
+	case ServiceGroups:
+		return Scopes(service)
+	case ServiceKeep:
+		return Scopes(service)
+	default:
+		return nil, errUnknownService
+	}
 }
 
 func mergeScopes(scopes []string, extras []string) []string {

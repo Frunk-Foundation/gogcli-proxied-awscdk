@@ -197,6 +197,18 @@ To request fewer scopes:
 gog auth add you@gmail.com --services drive,calendar
 ```
 
+To request read-only scopes (write operations will fail with 403 insufficient scopes):
+
+```bash
+gog auth add you@gmail.com --services drive,calendar --readonly
+```
+
+To use Drive's file-limited scope (write-capable, but limited to files created/opened by this app):
+
+```bash
+gog auth add you@gmail.com --services drive --drive-scope file
+```
+
 If you need to add services later and Google doesn't return a refresh token, re-run with `--force-consent`:
 
 ```bash

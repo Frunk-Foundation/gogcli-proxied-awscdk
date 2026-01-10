@@ -210,6 +210,78 @@ func TestScopesForServices_UnionSorted(t *testing.T) {
 	}
 }
 
+func TestScopesForManageWithOptions_Readonly(t *testing.T) {
+	scopes, err := ScopesForManageWithOptions([]Service{ServiceGmail, ServiceDrive, ServiceCalendar, ServiceContacts, ServiceTasks, ServiceSheets, ServiceDocs, ServicePeople}, ScopeOptions{
+		Readonly:   true,
+		DriveScope: DriveScopeFull,
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	want := []string{
+		scopeOpenID,
+		scopeEmail,
+		scopeUserinfoEmail,
+		"https://www.googleapis.com/auth/gmail.readonly",
+		"https://www.googleapis.com/auth/drive.readonly",
+		"https://www.googleapis.com/auth/calendar.readonly",
+		"https://www.googleapis.com/auth/contacts.readonly",
+		"https://www.googleapis.com/auth/tasks.readonly",
+		"https://www.googleapis.com/auth/spreadsheets.readonly",
+		"https://www.googleapis.com/auth/documents.readonly",
+		"profile",
+	}
+	for _, w := range want {
+		if !containsScope(scopes, w) {
+			t.Fatalf("missing %q in %v", w, scopes)
+		}
+	}
+
+	notWant := []string{
+		"https://mail.google.com/",
+		"https://www.googleapis.com/auth/gmail.settings.basic",
+		"https://www.googleapis.com/auth/drive",
+		"https://www.googleapis.com/auth/calendar",
+		"https://www.googleapis.com/auth/contacts",
+		"https://www.googleapis.com/auth/tasks",
+		"https://www.googleapis.com/auth/spreadsheets",
+		"https://www.googleapis.com/auth/documents",
+	}
+	for _, nw := range notWant {
+		if containsScope(scopes, nw) {
+			t.Fatalf("unexpected %q in %v", nw, scopes)
+		}
+	}
+}
+
+func TestScopesForManageWithOptions_DriveScopeFile(t *testing.T) {
+	scopes, err := ScopesForManageWithOptions([]Service{ServiceDrive, ServiceDocs}, ScopeOptions{
+		DriveScope: DriveScopeFile,
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	if !containsScope(scopes, "https://www.googleapis.com/auth/drive.file") {
+		t.Fatalf("missing drive.file in %v", scopes)
+	}
+
+	if containsScope(scopes, "https://www.googleapis.com/auth/drive") {
+		t.Fatalf("unexpected drive in %v", scopes)
+	}
+
+	if !containsScope(scopes, "https://www.googleapis.com/auth/documents") {
+		t.Fatalf("missing documents scope in %v", scopes)
+	}
+}
+
+func TestScopesForManageWithOptions_InvalidDriveScope(t *testing.T) {
+	if _, err := ScopesForManageWithOptions([]Service{ServiceDrive}, ScopeOptions{DriveScope: DriveScopeMode("nope")}); err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
 func TestScopes_DocsIncludesDriveAndDocsScopes(t *testing.T) {
 	scopes, err := Scopes(ServiceDocs)
 	if err != nil {

@@ -341,6 +341,8 @@ type AuthAddCmd struct {
 	Manual       bool   `name:"manual" help:"Browserless auth flow (paste redirect URL)"`
 	ForceConsent bool   `name:"force-consent" help:"Force consent screen to obtain a refresh token"`
 	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth keep)" default:"user"`
+	Readonly     bool   `name:"readonly" help:"Use read-only scopes where available (still includes OIDC identity scopes)"`
+	DriveScope   string `name:"drive-scope" help:"Drive scope mode: full|readonly|file" enum:"full,readonly,file" default:"full"`
 }
 
 func (c *AuthAddCmd) Run(ctx context.Context) error {
@@ -354,7 +356,13 @@ func (c *AuthAddCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("no services selected")
 	}
 
-	scopes, err := googleauth.ScopesForManage(services)
+	if c.Readonly && c.DriveScope == strFile {
+		return usage("cannot combine --readonly with --drive-scope=file (file is write-capable)")
+	}
+	scopes, err := googleauth.ScopesForManageWithOptions(services, googleauth.ScopeOptions{
+		Readonly:   c.Readonly,
+		DriveScope: googleauth.DriveScopeMode(c.DriveScope),
+	})
 	if err != nil {
 		return err
 	}
