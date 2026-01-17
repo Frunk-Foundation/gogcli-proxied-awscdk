@@ -35,6 +35,9 @@ func TestLiveScript(t *testing.T) {
 	if v := os.Getenv("GOG_LIVE_AUTH"); v != "" {
 		args = append(args, "--auth", v)
 	}
+	if os.Getenv("GOG_LIVE_ALLOW_NONTEST") != "" {
+		args = append(args, "--allow-nontest")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()

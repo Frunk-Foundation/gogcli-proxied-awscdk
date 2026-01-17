@@ -1165,6 +1165,7 @@ Script toggles:
 
 - `--auth all,groups` to re-auth before running
 - `--strict` to fail on optional features (groups/keep/enterprise)
+- `--allow-nontest` to override the test-account guardrail
 
 Go test wrapper (opt-in):
 
@@ -1172,7 +1173,7 @@ Go test wrapper (opt-in):
 GOG_LIVE=1 go test -tags=integration ./internal/integration -run Live
 ```
 
-Optional env: `GOG_LIVE_FAST=1`, `GOG_LIVE_SKIP=groups,keep`, `GOG_LIVE_AUTH=all,groups`.
+Optional env: `GOG_LIVE_FAST=1`, `GOG_LIVE_SKIP=groups,keep`, `GOG_LIVE_AUTH=all,groups`, `GOG_LIVE_ALLOW_NONTEST=1`.
 
 ### Make Shortcut
 
