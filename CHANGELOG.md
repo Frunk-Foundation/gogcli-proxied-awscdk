@@ -17,6 +17,7 @@
 - Gmail: include primary account display name in send From header when available. (#93) — thanks @salmonumbrella.
 - Keyring: persist OAuth tokens across Homebrew upgrades. (#94) — thanks @salmonumbrella.
 - Docs: update Gmail command examples in README. (#95) — thanks @chrisrodz.
+- Contacts: include birthdays in contact get output. (#102) — thanks @salmonumbrella.
 
 ## 0.7.0 - 2026-01-17
 
