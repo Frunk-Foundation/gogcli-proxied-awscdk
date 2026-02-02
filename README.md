@@ -38,6 +38,11 @@ Fast, script-friendly CLI for Gmail, Calendar, Chat, Classroom, Drive, Docs, Sli
 ```bash
 brew install steipete/tap/gogcli
 ```
+### Arch User Repository
+
+```bash
+yay -S gogcli
+```
 
 ### Build from Source
 
