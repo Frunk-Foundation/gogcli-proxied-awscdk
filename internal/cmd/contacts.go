@@ -169,3 +169,50 @@ func formatPartialDate(d *people.Date) string {
 func sanitizeTab(s string) string {
 	return strings.ReplaceAll(s, "\t", " ")
 }
+
+func primaryOrganization(p *people.Person) (name, title string) {
+	if p == nil || len(p.Organizations) == 0 || p.Organizations[0] == nil {
+		return "", ""
+	}
+	return p.Organizations[0].Name, p.Organizations[0].Title
+}
+
+func primaryURL(p *people.Person) string {
+	if p == nil || len(p.Urls) == 0 || p.Urls[0] == nil {
+		return ""
+	}
+	return p.Urls[0].Value
+}
+
+func allURLs(p *people.Person) []string {
+	if p == nil || len(p.Urls) == 0 {
+		return nil
+	}
+	urls := make([]string, 0, len(p.Urls))
+	for _, u := range p.Urls {
+		if u != nil && u.Value != "" {
+			urls = append(urls, u.Value)
+		}
+	}
+	return urls
+}
+
+func primaryBio(p *people.Person) string {
+	if p == nil || len(p.Biographies) == 0 || p.Biographies[0] == nil {
+		return ""
+	}
+	return p.Biographies[0].Value
+}
+
+func userDefinedFields(p *people.Person) map[string]string {
+	if p == nil || len(p.UserDefined) == 0 {
+		return nil
+	}
+	fields := make(map[string]string, len(p.UserDefined))
+	for _, ud := range p.UserDefined {
+		if ud != nil && ud.Key != "" {
+			fields[ud.Key] = ud.Value
+		}
+	}
+	return fields
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -15,10 +16,8 @@ import (
 )
 
 const (
-	contactsReadMask = "names,emailAddresses,phoneNumbers"
-	// contactsGetReadMask is tuned for round-tripping `gog contacts get --json`
-	// into `gog contacts update --from-file`.
-	contactsGetReadMask = contactsReadMask + ",birthdays,urls,biographies,addresses,organizations,metadata"
+	contactsReadMask    = "names,emailAddresses,phoneNumbers,organizations,urls"
+	contactsGetReadMask = contactsReadMask + ",birthdays,biographies,addresses,userDefined,metadata"
 )
 
 type ContactsListCmd struct {
@@ -165,14 +164,70 @@ func (c *ContactsGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	if bd := primaryBirthday(p); bd != "" {
 		u.Out().Printf("birthday\t%s", bd)
 	}
+	if org, title := primaryOrganization(p); org != "" || title != "" {
+		if org != "" && title != "" {
+			u.Out().Printf("organization\t%s (%s)", org, title)
+		} else if org != "" {
+			u.Out().Printf("organization\t%s", org)
+		} else {
+			u.Out().Printf("title\t%s", title)
+		}
+	}
+	for _, url := range allURLs(p) {
+		u.Out().Printf("url\t%s", url)
+	}
+	if bio := primaryBio(p); bio != "" {
+		u.Out().Printf("note\t%s", bio)
+	}
+	customFields := userDefinedFields(p)
+	if len(customFields) > 0 {
+		keys := make([]string, 0, len(customFields))
+		for k := range customFields {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			u.Out().Printf("custom:%s\t%s", k, customFields[k])
+		}
+	}
 	return nil
 }
 
 type ContactsCreateCmd struct {
-	Given  string `name:"given" help:"Given name (required)"`
-	Family string `name:"family" help:"Family name"`
-	Email  string `name:"email" help:"Email address"`
-	Phone  string `name:"phone" help:"Phone number"`
+	Given        string   `name:"given" help:"Given name (required)"`
+	Family       string   `name:"family" help:"Family name"`
+	Email        string   `name:"email" help:"Email address"`
+	Phone        string   `name:"phone" help:"Phone number"`
+	Organization string   `name:"org" help:"Organization/company name"`
+	Title        string   `name:"title" help:"Job title"`
+	URL          []string `name:"url" help:"URL (can be repeated for multiple URLs)"`
+	Note         string   `name:"note" help:"Note/biography"`
+	Custom       []string `name:"custom" help:"Custom field as key=value (can be repeated)"`
+}
+
+func parseCustomUserDefined(values []string, allowEmptyClear bool) ([]*people.UserDefined, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	if len(values) == 1 && strings.TrimSpace(values[0]) == "" {
+		if allowEmptyClear {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("--custom entry cannot be empty")
+	}
+
+	userDefined := make([]*people.UserDefined, 0, len(values))
+	for _, kv := range values {
+		parts := strings.SplitN(strings.TrimSpace(kv), "=", 2)
+		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" {
+			return nil, fmt.Errorf("expected key=value for --custom, got %q", kv)
+		}
+		userDefined = append(userDefined, &people.UserDefined{
+			Key:   strings.TrimSpace(parts[0]),
+			Value: strings.TrimSpace(parts[1]),
+		})
+	}
+	return userDefined, nil
 }
 
 func (c *ContactsCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
@@ -202,6 +257,35 @@ func (c *ContactsCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
 	if strings.TrimSpace(c.Phone) != "" {
 		p.PhoneNumbers = []*people.PhoneNumber{{Value: strings.TrimSpace(c.Phone)}}
 	}
+	if strings.TrimSpace(c.Organization) != "" || strings.TrimSpace(c.Title) != "" {
+		p.Organizations = []*people.Organization{{
+			Name:  strings.TrimSpace(c.Organization),
+			Title: strings.TrimSpace(c.Title),
+		}}
+	}
+	if len(c.URL) > 0 {
+		urls := make([]*people.Url, 0, len(c.URL))
+		for _, u := range c.URL {
+			if strings.TrimSpace(u) != "" {
+				urls = append(urls, &people.Url{Value: strings.TrimSpace(u)})
+			}
+		}
+		if len(urls) > 0 {
+			p.Urls = urls
+		}
+	}
+	if strings.TrimSpace(c.Note) != "" {
+		p.Biographies = []*people.Biography{{Value: strings.TrimSpace(c.Note)}}
+	}
+	if len(c.Custom) > 0 {
+		userDefined, parseErr := parseCustomUserDefined(c.Custom, false)
+		if parseErr != nil {
+			return usage(parseErr.Error())
+		}
+		if len(userDefined) > 0 {
+			p.UserDefined = userDefined
+		}
+	}
 
 	created, err := svc.People.CreateContact(p).Do()
 	if err != nil {
@@ -215,13 +299,18 @@ func (c *ContactsCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
 }
 
 type ContactsUpdateCmd struct {
-	ResourceName string `arg:"" name:"resourceName" help:"Resource name (people/...)"`
-	Given        string `name:"given" help:"Given name"`
-	Family       string `name:"family" help:"Family name"`
-	Email        string `name:"email" help:"Email address (empty clears)"`
-	Phone        string `name:"phone" help:"Phone number (empty clears)"`
-	FromFile     string `name:"from-file" help:"Update from contact JSON file (use - for stdin)"`
-	IgnoreETag   bool   `name:"ignore-etag" help:"Allow updating even if the JSON etag is stale (may overwrite concurrent changes)"`
+	ResourceName string   `arg:"" name:"resourceName" help:"Resource name (people/...)"`
+	Given        string   `name:"given" help:"Given name"`
+	Family       string   `name:"family" help:"Family name"`
+	Email        string   `name:"email" help:"Email address (empty clears)"`
+	Phone        string   `name:"phone" help:"Phone number (empty clears)"`
+	Organization string   `name:"org" help:"Organization/company name (empty clears)"`
+	Title        string   `name:"title" help:"Job title (empty clears)"`
+	URL          []string `name:"url" help:"URL (can be repeated; empty clears all)"`
+	Note         string   `name:"note" help:"Note/biography (empty clears)"`
+	Custom       []string `name:"custom" help:"Custom field as key=value (can be repeated; empty clears all)"`
+	FromFile     string   `name:"from-file" help:"Update from contact JSON file (use - for stdin)"`
+	IgnoreETag   bool     `name:"ignore-etag" help:"Allow updating even if the JSON etag is stale (may overwrite concurrent changes)"`
 
 	// Extra People API fields (not previously exposed by gog)
 	Birthday string `name:"birthday" help:"Birthday in YYYY-MM-DD (empty clears)"`
@@ -251,12 +340,12 @@ func (c *ContactsUpdateCmd) Run(ctx context.Context, kctx *kong.Context, flags *
 		return c.updateFromJSON(ctx, svc, resourceName, u)
 	}
 
-	existing, err := svc.People.Get(resourceName).PersonFields(contactsReadMask + ",birthdays,biographies,metadata").Do()
+	existing, err := svc.People.Get(resourceName).PersonFields(contactsReadMask + ",birthdays,biographies,userDefined,metadata").Do()
 	if err != nil {
 		return err
 	}
 
-	updateFields := make([]string, 0, 5)
+	updateFields := make([]string, 0, 8)
 
 	if flagProvided(kctx, "given") || flagProvided(kctx, "family") {
 		curGiven := ""
@@ -290,6 +379,56 @@ func (c *ContactsUpdateCmd) Run(ctx context.Context, kctx *kong.Context, flags *
 			existing.PhoneNumbers = []*people.PhoneNumber{{Value: strings.TrimSpace(c.Phone)}}
 		}
 		updateFields = append(updateFields, "phoneNumbers")
+	}
+	if flagProvided(kctx, "org") || flagProvided(kctx, "title") {
+		curOrg := ""
+		curTitle := ""
+		if len(existing.Organizations) > 0 && existing.Organizations[0] != nil {
+			curOrg = existing.Organizations[0].Name
+			curTitle = existing.Organizations[0].Title
+		}
+		if flagProvided(kctx, "org") {
+			curOrg = strings.TrimSpace(c.Organization)
+		}
+		if flagProvided(kctx, "title") {
+			curTitle = strings.TrimSpace(c.Title)
+		}
+		if curOrg == "" && curTitle == "" {
+			existing.Organizations = nil
+		} else {
+			existing.Organizations = []*people.Organization{{Name: curOrg, Title: curTitle}}
+		}
+		updateFields = append(updateFields, "organizations")
+	}
+	if flagProvided(kctx, "url") {
+		if len(c.URL) == 0 || (len(c.URL) == 1 && strings.TrimSpace(c.URL[0]) == "") {
+			existing.Urls = nil
+		} else {
+			urls := make([]*people.Url, 0, len(c.URL))
+			for _, u := range c.URL {
+				if strings.TrimSpace(u) != "" {
+					urls = append(urls, &people.Url{Value: strings.TrimSpace(u)})
+				}
+			}
+			existing.Urls = urls
+		}
+		updateFields = append(updateFields, "urls")
+	}
+	if flagProvided(kctx, "note") {
+		if strings.TrimSpace(c.Note) == "" {
+			existing.Biographies = nil
+		} else {
+			existing.Biographies = []*people.Biography{{Value: strings.TrimSpace(c.Note)}}
+		}
+		updateFields = append(updateFields, "biographies")
+	}
+	if flagProvided(kctx, "custom") {
+		userDefined, parseErr := parseCustomUserDefined(c.Custom, true)
+		if parseErr != nil {
+			return usage(parseErr.Error())
+		}
+		existing.UserDefined = userDefined
+		updateFields = append(updateFields, "userDefined")
 	}
 
 	if flagProvided(kctx, "birthday") {
