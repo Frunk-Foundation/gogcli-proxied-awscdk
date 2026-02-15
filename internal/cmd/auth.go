@@ -1137,6 +1137,7 @@ func (c *AuthKeepCmd) Run(ctx context.Context, _ *RootFlags) error {
 
 func parseAuthServices(servicesCSV string) ([]googleauth.Service, error) {
 	trimmed := strings.ToLower(strings.TrimSpace(servicesCSV))
+	//nolint:goconst // "all" is auth-services input, unrelated to other package constants that happen to share the same literal.
 	if trimmed == "" || trimmed == "user" || trimmed == "all" {
 		return googleauth.UserServices(), nil
 	}
