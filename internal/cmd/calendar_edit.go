@@ -358,22 +358,9 @@ func (c *CalendarUpdateCmd) Run(ctx context.Context, kctx *kong.Context, flags *
 		return usage("empty eventId")
 	}
 
-	scope := strings.TrimSpace(strings.ToLower(c.Scope))
-	if scope == "" {
-		scope = scopeAll
-	}
-	switch scope {
-	case scopeSingle:
-		if strings.TrimSpace(c.OriginalStartTime) == "" {
-			return usage("--original-start required when --scope=single")
-		}
-	case scopeFuture:
-		if strings.TrimSpace(c.OriginalStartTime) == "" {
-			return usage("--original-start required when --scope=future")
-		}
-	case scopeAll:
-	default:
-		return fmt.Errorf("invalid scope: %q (must be single, future, or all)", scope)
+	scope, err := resolveRecurringScope(c.Scope, c.OriginalStartTime)
+	if err != nil {
+		return err
 	}
 
 	// If --all-day changed, require from/to to update both date/time fields.
@@ -441,12 +428,14 @@ func (c *CalendarUpdateCmd) Run(ctx context.Context, kctx *kong.Context, flags *
 		if getErr != nil {
 			return fmt.Errorf("failed to fetch current event: %w", getErr)
 		}
-		patch.Attendees = mergeAttendees(existing.Attendees, c.AddAttendee)
-		changed = true
-	}
-
-	if !changed {
-		return usage("no updates provided")
+		merged, attendeesChanged := mergeAttendeesWithChange(existing.Attendees, c.AddAttendee)
+		if attendeesChanged {
+			patch.Attendees = merged
+			changed = true
+		}
+		if !changed {
+			return usage("no updates provided")
+		}
 	}
 
 	targetEventID, parentRecurrence, err := applyUpdateScope(ctx, svc, calendarID, eventID, scope, c.OriginalStartTime, patch)
@@ -848,6 +837,23 @@ func truncateParentRecurrence(ctx context.Context, svc *calendar.Service, calend
 	return err
 }
 
+func resolveRecurringScope(scopeValue, originalStartTime string) (string, error) {
+	scope := strings.TrimSpace(strings.ToLower(scopeValue))
+	if scope == "" {
+		scope = scopeAll
+	}
+	switch scope {
+	case scopeSingle, scopeFuture:
+		if strings.TrimSpace(originalStartTime) == "" {
+			return "", usage(fmt.Sprintf("--original-start required when --scope=%s", scope))
+		}
+	case scopeAll:
+	default:
+		return "", fmt.Errorf("invalid scope: %q (must be single, future, or all)", scope)
+	}
+	return scope, nil
+}
+
 type CalendarDeleteCmd struct {
 	CalendarID        string `arg:"" name:"calendarId" help:"Calendar ID"`
 	EventID           string `arg:"" name:"eventId" help:"Event ID"`
@@ -867,22 +873,9 @@ func (c *CalendarDeleteCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty eventId")
 	}
 
-	scope := strings.TrimSpace(strings.ToLower(c.Scope))
-	if scope == "" {
-		scope = scopeAll
-	}
-	switch scope {
-	case scopeSingle:
-		if strings.TrimSpace(c.OriginalStartTime) == "" {
-			return usage("--original-start required when --scope=single")
-		}
-	case scopeFuture:
-		if strings.TrimSpace(c.OriginalStartTime) == "" {
-			return usage("--original-start required when --scope=future")
-		}
-	case scopeAll:
-	default:
-		return fmt.Errorf("invalid scope: %q (must be single, future, or all)", scope)
+	scope, err := resolveRecurringScope(c.Scope, c.OriginalStartTime)
+	if err != nil {
+		return err
 	}
 
 	sendUpdates, err := validateSendUpdates(c.SendUpdates)

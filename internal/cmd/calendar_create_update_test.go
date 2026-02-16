@@ -17,6 +17,30 @@ import (
 	"github.com/steipete/gogcli/internal/ui"
 )
 
+func newCalendarServiceFromServer(t *testing.T, srv *httptest.Server) *calendar.Service {
+	t.Helper()
+
+	svc, err := calendar.NewService(context.Background(),
+		option.WithoutAuthentication(),
+		option.WithHTTPClient(srv.Client()),
+		option.WithEndpoint(srv.URL+"/"),
+	)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+	return svc
+}
+
+func newCalendarJSONContext(t *testing.T) context.Context {
+	t.Helper()
+
+	u, err := ui.New(ui.Options{Stdout: io.Discard, Stderr: io.Discard, Color: "never"})
+	if err != nil {
+		t.Fatalf("ui.New: %v", err)
+	}
+	return outfmt.WithMode(ui.WithUI(context.Background(), u), outfmt.Mode{JSON: true})
+}
+
 func TestCalendarCreateCmd_RunJSON(t *testing.T) {
 	origNew := newCalendarService
 	t.Cleanup(func() { newCalendarService = origNew })
@@ -530,21 +554,10 @@ func TestCalendarUpdateCmd_SendUpdates(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	svc, err := calendar.NewService(context.Background(),
-		option.WithoutAuthentication(),
-		option.WithHTTPClient(srv.Client()),
-		option.WithEndpoint(srv.URL+"/"),
-	)
-	if err != nil {
-		t.Fatalf("NewService: %v", err)
-	}
+	svc := newCalendarServiceFromServer(t, srv)
 	newCalendarService = func(context.Context, string) (*calendar.Service, error) { return svc, nil }
 
-	u, err := ui.New(ui.Options{Stdout: os.Stdout, Stderr: os.Stderr, Color: "never"})
-	if err != nil {
-		t.Fatalf("ui.New: %v", err)
-	}
-	ctx := outfmt.WithMode(ui.WithUI(context.Background(), u), outfmt.Mode{JSON: true})
+	ctx := newCalendarJSONContext(t)
 
 	cmd := &CalendarUpdateCmd{}
 	if err := runKong(t, cmd, []string{
@@ -557,6 +570,65 @@ func TestCalendarUpdateCmd_SendUpdates(t *testing.T) {
 	}
 	if gotSendUpdates != "all" {
 		t.Fatalf("expected sendUpdates=all, got %q", gotSendUpdates)
+	}
+}
+
+func TestCalendarUpdateCmd_AddAttendeeNoOp(t *testing.T) {
+	origNew := newCalendarService
+	t.Cleanup(func() { newCalendarService = origNew })
+
+	var patchCalled bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/calendar/v3")
+		switch {
+		case r.Method == http.MethodGet && path == "/users/me/calendarList":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{
+						"id":      "cal",
+						"summary": "cal",
+					},
+				},
+			})
+			return
+		case r.Method == http.MethodGet && path == "/calendars/cal/events/ev":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "ev",
+				"attendees": []map[string]any{
+					{"email": "existing@example.com", "responseStatus": "accepted"},
+				},
+			})
+			return
+		case r.Method == http.MethodPatch && path == "/calendars/cal/events/ev":
+			patchCalled = true
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "ev"})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	svc := newCalendarServiceFromServer(t, srv)
+	newCalendarService = func(context.Context, string) (*calendar.Service, error) { return svc, nil }
+
+	ctx := newCalendarJSONContext(t)
+	cmd := &CalendarUpdateCmd{}
+	err := runKong(t, cmd, []string{
+		"cal",
+		"ev",
+		"--add-attendee", "EXISTING@example.com",
+	}, ctx, &RootFlags{Account: "a@b.com"})
+	if err == nil {
+		t.Fatalf("expected error for no-op add-attendee")
+	}
+	if !strings.Contains(err.Error(), "no updates provided") {
+		t.Fatalf("expected no updates error, got %v", err)
+	}
+	if patchCalled {
+		t.Fatalf("expected no PATCH call for no-op add-attendee")
 	}
 }
 
@@ -610,21 +682,10 @@ func TestCalendarUpdateCmd_ScopeFuture(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	svc, err := calendar.NewService(context.Background(),
-		option.WithoutAuthentication(),
-		option.WithHTTPClient(srv.Client()),
-		option.WithEndpoint(srv.URL+"/"),
-	)
-	if err != nil {
-		t.Fatalf("NewService: %v", err)
-	}
+	svc := newCalendarServiceFromServer(t, srv)
 	newCalendarService = func(context.Context, string) (*calendar.Service, error) { return svc, nil }
 
-	u, err := ui.New(ui.Options{Stdout: os.Stdout, Stderr: os.Stderr, Color: "never"})
-	if err != nil {
-		t.Fatalf("ui.New: %v", err)
-	}
-	ctx := outfmt.WithMode(ui.WithUI(context.Background(), u), outfmt.Mode{JSON: true})
+	ctx := newCalendarJSONContext(t)
 
 	cmd := &CalendarUpdateCmd{}
 	if err := runKong(t, cmd, []string{
