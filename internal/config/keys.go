@@ -12,6 +12,9 @@ type Key string
 const (
 	KeyTimezone       Key = "timezone"
 	KeyKeyringBackend Key = "keyring_backend"
+	KeyDefaultAccount Key = "default_account"
+	KeyProxyBaseURL   Key = "proxy_base_url"
+	KeyProxyAPIKey    Key = "proxy_api_key"
 )
 
 type KeySpec struct {
@@ -25,6 +28,9 @@ type KeySpec struct {
 var keyOrder = []Key{
 	KeyTimezone,
 	KeyKeyringBackend,
+	KeyDefaultAccount,
+	KeyProxyBaseURL,
+	KeyProxyAPIKey,
 }
 
 var keySpecs = map[Key]KeySpec{
@@ -61,6 +67,54 @@ var keySpecs = map[Key]KeySpec{
 		},
 		EmptyHint: func() string {
 			return "(not set, using auto)"
+		},
+	},
+	KeyDefaultAccount: {
+		Key: KeyDefaultAccount,
+		Get: func(cfg File) string {
+			return cfg.DefaultAccount
+		},
+		Set: func(cfg *File, value string) error {
+			cfg.DefaultAccount = strings.TrimSpace(value)
+			return nil
+		},
+		Unset: func(cfg *File) {
+			cfg.DefaultAccount = ""
+		},
+		EmptyHint: func() string {
+			return "(not set)"
+		},
+	},
+	KeyProxyBaseURL: {
+		Key: KeyProxyBaseURL,
+		Get: func(cfg File) string {
+			return cfg.ProxyBaseURL
+		},
+		Set: func(cfg *File, value string) error {
+			cfg.ProxyBaseURL = strings.TrimSpace(value)
+			return nil
+		},
+		Unset: func(cfg *File) {
+			cfg.ProxyBaseURL = ""
+		},
+		EmptyHint: func() string {
+			return "(not set)"
+		},
+	},
+	KeyProxyAPIKey: {
+		Key: KeyProxyAPIKey,
+		Get: func(cfg File) string {
+			return cfg.ProxyAPIKey
+		},
+		Set: func(cfg *File, value string) error {
+			cfg.ProxyAPIKey = strings.TrimSpace(value)
+			return nil
+		},
+		Unset: func(cfg *File) {
+			cfg.ProxyAPIKey = ""
+		},
+		EmptyHint: func() string {
+			return "(not set)"
 		},
 	},
 }

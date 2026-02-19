@@ -138,14 +138,20 @@ We intentionally avoid storing refresh tokens in plain JSON on disk.
 
 Environment:
 
-- `GOG_ACCOUNT=you@gmail.com` (email or alias; used when `--account` is not set; otherwise uses keyring default or a single stored token)
+- `GOG_ACCOUNT=you@gmail.com` (email or alias; required for API commands if `--account` is not set)
 - `GOG_CLIENT=work` (select OAuth client bucket; see `--client`)
 - `GOG_KEYRING_PASSWORD=...` (used when keyring falls back to encrypted file backend in non-interactive environments)
 - `GOG_KEYRING_BACKEND={auto|keychain|file}` (force backend; use `file` to avoid Keychain prompts and pair with `GOG_KEYRING_PASSWORD` for non-interactive)
 - `GOG_TIMEZONE=America/New_York` (default output timezone; IANA name or `UTC`; `local` forces local timezone)
 - `GOG_ENABLE_COMMANDS=calendar,tasks` (optional allowlist of top-level commands)
+- `GOG_PROXY_BASE_URL=https://.../prod` (API Gateway base URL for proxying Google API calls; service paths are appended, e.g. `/gmail/v1/...`)
+- `GOG_PROXY_API_KEY=...` (API Gateway API key; secret)
+- AWS credentials for SigV4 are resolved via the AWS SDK for Go v2 default credential chain (env/shared config+credentials/SSO/metadata/web identity)
+- `AWS_REGION` / `AWS_DEFAULT_REGION` (SigV4 signing region when it can’t be inferred from the gateway hostname)
 - `config.json` can also set `keyring_backend` (JSON5; env vars take precedence)
 - `config.json` can also set `default_timezone` (IANA name or `UTC`)
+- `config.json` can also set `default_account` for API command account defaulting
+- `config.json` can also set `proxy_base_url` and `proxy_api_key` for proxy mode
 - `config.json` can also set `account_aliases` for `gog auth alias` (JSON5)
 - `config.json` can also set `account_clients` (email -> client) and `client_domains` (domain -> client)
 

@@ -1,6 +1,8 @@
 pre-commit:
   parallel: true
   commands:
+    secrets:
+      run: make secrets-staged
     fmt-check:
       run: make fmt-check
     lint:

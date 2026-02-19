@@ -56,6 +56,11 @@ func stableExitCode(err error) error {
 		return &ExitError{Code: exitCodeConfig, Err: err}
 	}
 
+	var proxyCfgErr *gogapi.ProxyConfigError
+	if errors.As(err, &proxyCfgErr) {
+		return &ExitError{Code: exitCodeConfig, Err: err}
+	}
+
 	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return &ExitError{Code: exitCodeAuthRequired, Err: err}
 	}

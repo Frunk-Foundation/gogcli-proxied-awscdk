@@ -8,26 +8,10 @@ import (
 	"github.com/steipete/gogcli/internal/secrets"
 )
 
-type tasksStubStore struct {
-	tok secrets.Token
-	err error
-}
-
-func (s *tasksStubStore) Keys() ([]string, error)                      { return nil, nil }
-func (s *tasksStubStore) SetToken(string, string, secrets.Token) error { return nil }
-func (s *tasksStubStore) DeleteToken(string, string) error             { return nil }
-func (s *tasksStubStore) ListTokens() ([]secrets.Token, error)         { return nil, nil }
-func (s *tasksStubStore) GetDefaultAccount(string) (string, error)     { return "", nil }
-func (s *tasksStubStore) SetDefaultAccount(string, string) error       { return nil }
-func (s *tasksStubStore) GetToken(string, string) (secrets.Token, error) {
-	if s.err != nil {
-		return secrets.Token{}, s.err
-	}
-
-	return s.tok, nil
-}
-
 func TestNewTasks(t *testing.T) {
+	t.Setenv("GOG_PROXY_BASE_URL", "https://abc123.execute-api.us-east-1.amazonaws.com/prod")
+	t.Setenv("GOG_PROXY_API_KEY", "k")
+
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
 
@@ -37,10 +21,12 @@ func TestNewTasks(t *testing.T) {
 	})
 
 	readClientCredentials = func(string) (config.ClientCredentials, error) {
-		return config.ClientCredentials{ClientID: "id", ClientSecret: "secret"}, nil
+		t.Fatalf("readClientCredentials should not be called")
+		return config.ClientCredentials{}, nil
 	}
 	openSecretsStore = func() (secrets.Store, error) {
-		return &tasksStubStore{tok: secrets.Token{RefreshToken: "rt"}}, nil
+		t.Fatalf("openSecretsStore should not be called")
+		panic("unreachable")
 	}
 
 	svc, err := NewTasks(context.Background(), "a@b.com")

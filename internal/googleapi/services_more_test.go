@@ -6,26 +6,37 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/oauth2"
+
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/secrets"
 )
 
-func TestNewServicesWithStoredToken(t *testing.T) {
+func TestNewServices_ProxyConfigHappyPath(t *testing.T) {
+	t.Setenv("GOG_PROXY_BASE_URL", "https://abc123.execute-api.us-east-1.amazonaws.com/prod")
+	t.Setenv("GOG_PROXY_API_KEY", "k")
+
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
+	origSA := newServiceAccountTokenSource
 
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		openSecretsStore = origOpen
+		newServiceAccountTokenSource = origSA
 	})
 
 	readClientCredentials = func(string) (config.ClientCredentials, error) {
-		return config.ClientCredentials{ClientID: "id", ClientSecret: "secret"}, nil
+		t.Fatalf("readClientCredentials should not be called")
+		return config.ClientCredentials{}, nil
 	}
-
-	store := &stubStore{tok: secrets.Token{RefreshToken: "rt"}}
 	openSecretsStore = func() (secrets.Store, error) {
-		return store, nil
+		t.Fatalf("openSecretsStore should not be called")
+		return nil, errBoom
+	}
+	newServiceAccountTokenSource = func(context.Context, []byte, string, []string) (oauth2.TokenSource, error) {
+		t.Fatalf("newServiceAccountTokenSource should not be called")
+		return nil, errBoom
 	}
 
 	ctx := context.Background()

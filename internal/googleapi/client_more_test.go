@@ -140,6 +140,9 @@ func TestTokenSourceForAccount_ReadCredsError(t *testing.T) {
 }
 
 func TestOptionsForAccountScopes_HappyPath(t *testing.T) {
+	t.Setenv("GOG_PROXY_BASE_URL", "https://abc123.execute-api.us-east-1.amazonaws.com/prod")
+	t.Setenv("GOG_PROXY_API_KEY", "k")
+
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
 
@@ -149,10 +152,12 @@ func TestOptionsForAccountScopes_HappyPath(t *testing.T) {
 	})
 
 	readClientCredentials = func(string) (config.ClientCredentials, error) {
-		return config.ClientCredentials{ClientID: "id", ClientSecret: "secret"}, nil
+		t.Fatalf("readClientCredentials should not be called")
+		return config.ClientCredentials{}, nil
 	}
 	openSecretsStore = func() (secrets.Store, error) {
-		return &stubStore{tok: secrets.Token{Email: "a@b.com", RefreshToken: "rt"}}, nil
+		t.Fatalf("openSecretsStore should not be called")
+		return nil, errBoom
 	}
 
 	opts, err := optionsForAccountScopes(context.Background(), "svc", "a@b.com", []string{"s1"})
@@ -166,6 +171,9 @@ func TestOptionsForAccountScopes_HappyPath(t *testing.T) {
 }
 
 func TestOptionsForAccount_HappyPath(t *testing.T) {
+	t.Setenv("GOG_PROXY_BASE_URL", "https://abc123.execute-api.us-east-1.amazonaws.com/prod")
+	t.Setenv("GOG_PROXY_API_KEY", "k")
+
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
 
@@ -175,10 +183,12 @@ func TestOptionsForAccount_HappyPath(t *testing.T) {
 	})
 
 	readClientCredentials = func(string) (config.ClientCredentials, error) {
-		return config.ClientCredentials{ClientID: "id", ClientSecret: "secret"}, nil
+		t.Fatalf("readClientCredentials should not be called")
+		return config.ClientCredentials{}, nil
 	}
 	openSecretsStore = func() (secrets.Store, error) {
-		return &stubStore{tok: secrets.Token{Email: "a@b.com", RefreshToken: "rt"}}, nil
+		t.Fatalf("openSecretsStore should not be called")
+		return nil, errBoom
 	}
 
 	opts, err := optionsForAccount(context.Background(), googleauth.ServiceDrive, "a@b.com")
@@ -191,7 +201,10 @@ func TestOptionsForAccount_HappyPath(t *testing.T) {
 	}
 }
 
-func TestOptionsForAccountScopes_ServiceAccountPreferred(t *testing.T) {
+func TestOptionsForAccountScopes_IgnoresLocalServiceAccount(t *testing.T) {
+	t.Setenv("GOG_PROXY_BASE_URL", "https://abc123.execute-api.us-east-1.amazonaws.com/prod")
+	t.Setenv("GOG_PROXY_API_KEY", "k")
+
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
@@ -228,32 +241,14 @@ func TestOptionsForAccountScopes_ServiceAccountPreferred(t *testing.T) {
 		return nil, errBoom
 	}
 
-	called := false
 	newServiceAccountTokenSource = func(_ context.Context, keyJSON []byte, subject string, scopes []string) (oauth2.TokenSource, error) {
-		called = true
-
-		if subject != "a@b.com" {
-			t.Fatalf("unexpected subject: %q", subject)
-		}
-
-		if len(scopes) != 1 || scopes[0] != "s1" {
-			t.Fatalf("unexpected scopes: %#v", scopes)
-		}
-
-		if string(keyJSON) == "" {
-			t.Fatalf("expected keyJSON")
-		}
-
-		return oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "t"}), nil
+		t.Fatalf("newServiceAccountTokenSource should not be called")
+		return nil, errBoom
 	}
 
 	opts, err := optionsForAccountScopes(context.Background(), "svc", "a@b.com", []string{"s1"})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
-	}
-
-	if !called {
-		t.Fatalf("expected service account token source used")
 	}
 
 	if len(opts) == 0 {

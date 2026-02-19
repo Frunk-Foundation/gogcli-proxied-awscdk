@@ -4,6 +4,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := build
 
 .PHONY: build gog gogcli gog-help gogcli-help help fmt fmt-check lint test ci tools
+.PHONY: secrets secrets-full secrets-staged secrets-pr
 .PHONY: worker-ci
 
 BIN_DIR := $(CURDIR)/bin
@@ -19,6 +20,8 @@ TOOLS_DIR := $(CURDIR)/.tools
 GOFUMPT := $(TOOLS_DIR)/gofumpt
 GOIMPORTS := $(TOOLS_DIR)/goimports
 GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint
+GITLEAKS := $(TOOLS_DIR)/gitleaks
+GITLEAKS_VERSION := v8.24.2
 
 # Allow passing CLI args as extra "targets":
 #   make gogcli -- --help
@@ -63,6 +66,7 @@ tools:
 	@GOBIN=$(TOOLS_DIR) go install mvdan.cc/gofumpt@v0.9.2
 	@GOBIN=$(TOOLS_DIR) go install golang.org/x/tools/cmd/goimports@v0.41.0
 	@GOBIN=$(TOOLS_DIR) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
+	@GOBIN=$(TOOLS_DIR) go install github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION)
 
 fmt: tools
 	@$(GOIMPORTS) -local github.com/steipete/gogcli -w .
@@ -87,6 +91,39 @@ test:
 	@go test ./...
 
 ci: pnpm-gate fmt-check lint test
+
+secrets: secrets-full
+
+secrets-full:
+	@GL="$(GITLEAKS)"; \
+	if [ ! -x "$$GL" ]; then GL="$$(command -v gitleaks || true)"; fi; \
+	if [ -z "$$GL" ]; then \
+		echo "gitleaks not found. Run 'make tools' or install gitleaks in PATH."; \
+		exit 2; \
+	fi; \
+	"$$GL" git --no-banner --redact .
+
+secrets-staged:
+	@GL="$(GITLEAKS)"; \
+	if [ ! -x "$$GL" ]; then GL="$$(command -v gitleaks || true)"; fi; \
+	if [ -z "$$GL" ]; then \
+		echo "gitleaks not found. Run 'make tools' or install gitleaks in PATH."; \
+		exit 2; \
+	fi; \
+	"$$GL" git --no-banner --redact --pre-commit --staged .
+
+secrets-pr:
+	@if [ -z "$(BASE_SHA)" ] || [ -z "$(HEAD_SHA)" ]; then \
+		echo "BASE_SHA and HEAD_SHA are required (example: BASE_SHA=... HEAD_SHA=... make secrets-pr)"; \
+		exit 2; \
+	fi
+	@GL="$(GITLEAKS)"; \
+	if [ ! -x "$$GL" ]; then GL="$$(command -v gitleaks || true)"; fi; \
+	if [ -z "$$GL" ]; then \
+		echo "gitleaks not found. Run 'make tools' or install gitleaks in PATH."; \
+		exit 2; \
+	fi; \
+	"$$GL" git --no-banner --redact --log-opts="$(BASE_SHA)..$(HEAD_SHA)" .
 
 worker-ci:
 	@pnpm -C internal/tracking/worker lint

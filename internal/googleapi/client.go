@@ -93,40 +93,25 @@ func optionsForAccount(ctx context.Context, service googleauth.Service, email st
 }
 
 func optionsForAccountScopes(ctx context.Context, serviceLabel string, email string, scopes []string) ([]option.ClientOption, error) {
-	slog.Debug("creating client options with custom scopes", "serviceLabel", serviceLabel, "email", email)
+	slog.Debug("creating client options with custom scopes", "serviceLabel", serviceLabel, "email", email, "scopeCount", len(scopes))
 
-	var creds config.ClientCredentials
-
-	var ts oauth2.TokenSource
-
-	if serviceAccountTS, saPath, ok, err := tokenSourceForServiceAccountScopes(ctx, email, scopes); err != nil {
-		return nil, fmt.Errorf("service account token source: %w", err)
-	} else if ok {
-		slog.Debug("using service account credentials", "email", email, "path", saPath)
-		ts = serviceAccountTS
-	} else {
-		client, err := authclient.ResolveClient(ctx, email)
-		if err != nil {
-			return nil, fmt.Errorf("resolve client: %w", err)
-		}
-
-		if c, err := readClientCredentials(client); err != nil {
-			return nil, fmt.Errorf("read credentials: %w", err)
-		} else {
-			creds = c
-		}
-
-		if tokenSource, err := tokenSourceForAccountScopes(ctx, serviceLabel, email, client, creds.ClientID, creds.ClientSecret, scopes); err != nil {
-			return nil, fmt.Errorf("token source: %w", err)
-		} else {
-			ts = tokenSource
-		}
+	proxyCfg, err := loadProxyConfig()
+	if err != nil {
+		return nil, err
 	}
+	credsProvider, err := loadAWSCredentialsProvider(ctx, proxyCfg.Region)
+	if err != nil {
+		return nil, err
+	}
+
 	baseTransport := newBaseTransport()
-	// Wrap with retry logic for 429 and 5xx errors
-	retryTransport := NewRetryTransport(&oauth2.Transport{
-		Source: ts,
-		Base:   baseTransport,
+	// Inject proxy auth + SigV4, then wrap with retry logic for 429 and 5xx errors.
+	retryTransport := NewRetryTransport(&apiGatewayProxyTransport{
+		Base:                baseTransport,
+		Region:              proxyCfg.Region,
+		APIKey:              proxyCfg.APIKey,
+		Account:             email,
+		CredentialsProvider: credsProvider,
 	})
 	c := &http.Client{
 		Transport: retryTransport,
@@ -135,7 +120,10 @@ func optionsForAccountScopes(ctx context.Context, serviceLabel string, email str
 
 	slog.Debug("client options with custom scopes created successfully", "serviceLabel", serviceLabel, "email", email)
 
-	return []option.ClientOption{option.WithHTTPClient(c)}, nil
+	return []option.ClientOption{
+		option.WithHTTPClient(c),
+		option.WithEndpoint(proxyCfg.Endpoint),
+	}, nil
 }
 
 func newBaseTransport() *http.Transport {
@@ -146,11 +134,14 @@ func newBaseTransport() *http.Transport {
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS12,
 			},
+			DisableCompression: true,
 		}
 	}
 
 	// Clone() deep-copies TLSClientConfig, so no additional clone needed.
 	transport := defaultTransport.Clone()
+
+	transport.DisableCompression = true
 	if transport.TLSClientConfig == nil {
 		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 		return transport

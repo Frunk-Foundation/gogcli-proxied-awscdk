@@ -1,0 +1,8 @@
+{
+  "app": "python3 app.py",
+  "context": {
+    "stage_name": "prod",
+    "ssm_prefix": "/gogcli-proxy"
+  }
+}
+

@@ -40,3 +40,30 @@ bin/
 
 # Node (optional dev scripts)
 node_modules/
+
+# macOS
+.DS_Store
+
+# Local-only secrets (never commit)
+gogcli-client-auths/
+
+# Local migration backup (safe to delete)
+.git.outer-backup/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# CDK
+cdk.out/
+infra/cdk.out/
+infra/.venv/
+infra/venv/
+
+# Local agent/session docs
+IMPLEMENTATION_PLAN.md
+SKILL.md
+.tmuxinator.yml
